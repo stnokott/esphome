@@ -445,6 +445,11 @@ def command_monitor(args, config):
             lambda: modified_time != os.path.getmtime(CORE.config_path),
         )
         modified_time = os.path.getmtime(CORE.config_path)
+        conf_path = CORE.config_path
+        CORE.reset()
+        CORE.config_path = conf_path
+        CORE.config = read_config(dict(args.substitution) if args.substitution else {})
+        CORE.dashboard = args.dashboard
 
 
 def command_clean_mqtt(args, config):
