@@ -2,6 +2,7 @@ import argparse
 import functools
 import logging
 import os
+import os.path
 import re
 import sys
 from datetime import datetime
@@ -95,7 +96,7 @@ def get_port_type(port):
     return "NETWORK"
 
 
-def run_miniterm(config, port):
+def run_miniterm(config, port, should_abort = None):
     import serial
     from esphome import platformio_api
 
@@ -121,6 +122,8 @@ def run_miniterm(config, port):
 
     with ser:
         while True:
+            if should_abort is not None and should_abort():
+                break
             try:
                 raw = ser.readline()
             except serial.SerialException:
@@ -276,11 +279,11 @@ def upload_program(config, args, host):
     return espota2.run_ota(host, remote_port, password, CORE.firmware_bin)
 
 
-def show_logs(config, args, port):
+def show_logs(config, args, port, should_abort = None):
     if "logger" not in config:
         raise EsphomeError("Logger is not configured!")
     if get_port_type(port) == "SERIAL":
-        run_miniterm(config, port)
+        run_miniterm(config, port, should_abort)
         return 0
     if get_port_type(port) == "NETWORK" and "api" in config:
         from esphome.components.api.client import run_logs
@@ -395,6 +398,41 @@ def command_run(args, config):
         show_api=True,
     )
     return show_logs(config, args, port)
+
+
+def command_monitor(args, config):
+    port = choose_upload_log_host(
+        default=args.device,
+        check_default=None,
+        show_ota=True,
+        show_mqtt=False,
+        show_api=True,
+    )
+
+    modified_time = os.path.getmtime(CORE.config_path)
+    while True:
+        exit_code = write_cpp(config)
+        if exit_code != 0:
+            return exit_code
+        exit_code = compile_program(args, config)
+        if exit_code != 0:
+            return exit_code
+        _LOGGER.info("Successfully compiled program.")
+        exit_code = upload_program(config, args, port)
+        if exit_code != 0:
+            return exit_code
+        _LOGGER.info("Successfully uploaded program.")
+        if args.no_logs:
+            return 0
+        port = choose_upload_log_host(
+            default=args.device,
+            check_default=port,
+            show_ota=False,
+            show_mqtt=True,
+            show_api=True,
+        )
+        show_logs(config, args, port, lambda: modified_time != os.path.getmtime(CORE.config_path))
+        modified_time = os.path.getmtime(CORE.config_path)
 
 
 def command_clean_mqtt(args, config):
@@ -591,6 +629,7 @@ POST_CONFIG_ACTIONS = {
     "upload": command_upload,
     "logs": command_logs,
     "run": command_run,
+    "monitor": command_monitor,
     "clean-mqtt": command_clean_mqtt,
     "mqtt-fingerprint": command_mqtt_fingerprint,
     "clean": command_clean,
@@ -690,6 +729,22 @@ def parse_args(argv):
         help="Manually specify the serial port/address to use, for example /dev/ttyUSB0.",
     )
     parser_run.add_argument(
+        "--no-logs", help="Disable starting logs.", action="store_true"
+    )
+
+    parser_monitor = subparsers.add_parser(
+        "monitor",
+        help="Validate the configuration, create a binary, upload it, and start logs. Repeats if config file changes",
+        parents=[mqtt_options],
+    )
+    parser_monitor.add_argument(
+        "configuration", help="Your YAML configuration file(s).", nargs="+"
+    )
+    parser_monitor.add_argument(
+        "--device",
+        help="Manually specify the serial port/address to use, for example /dev/ttyUSB0.",
+    )
+    parser_monitor.add_argument(
         "--no-logs", help="Disable starting logs.", action="store_true"
     )
 
@@ -830,6 +885,7 @@ def parse_args(argv):
             "upload",
             "logs",
             "run",
+            "monitor",
             "clean-mqtt",
             "wizard",
             "mqtt-fingerprint",

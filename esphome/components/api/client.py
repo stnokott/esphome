@@ -13,7 +13,7 @@ from . import CONF_ENCRYPTION
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_run_logs(config, address):
+async def async_run_logs(config, address, should_abort = None):
     conf = config["api"]
     port: int = int(conf[CONF_PORT])
     password: str = conf[CONF_PASSWORD]
@@ -61,11 +61,15 @@ async def async_run_logs(config, address):
 
     try:
         while True:
+            if should_abort is not None and should_abort():
+                await reconnect.stop()
+                zc.close()
+                break
             await asyncio.sleep(60)
     except KeyboardInterrupt:
         await reconnect.stop()
         zc.close()
 
 
-def run_logs(config, address):
-    asyncio.run(async_run_logs(config, address))
+def run_logs(config, address, should_abort = None):
+    asyncio.run(async_run_logs(config, address, should_abort))
