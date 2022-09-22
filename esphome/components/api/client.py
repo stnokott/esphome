@@ -65,7 +65,7 @@ async def async_run_logs(config, address, should_abort = None):
                 await reconnect.stop()
                 zc.close()
                 break
-            await asyncio.sleep(60)
+            await asyncio.sleep(2)
     except KeyboardInterrupt:
         await reconnect.stop()
         zc.close()

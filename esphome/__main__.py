@@ -113,6 +113,7 @@ def run_miniterm(config, port, should_abort = None):
     ser = serial.Serial()
     ser.baudrate = baud_rate
     ser.port = port
+    ser.timeout = 1
 
     # We can't set to False by default since it leads to toggling and hence
     # ESP32 resets on some platforms.
@@ -121,11 +122,17 @@ def run_miniterm(config, port, should_abort = None):
         ser.rts = False
 
     with ser:
+        buffer = bytes()
         while True:
             if should_abort is not None and should_abort():
+                ser.close()
                 break
             try:
-                raw = ser.readline()
+                buffer = buffer + ser.readline()
+                if b"\n" not in buffer:
+                    continue
+                raw = buffer
+                buffer = bytes()
             except serial.SerialException:
                 _LOGGER.error("Serial port closed!")
                 return
