@@ -96,7 +96,7 @@ def get_port_type(port):
     return "NETWORK"
 
 
-def run_miniterm(config, port, should_abort = None):
+def run_miniterm(config, port, should_abort=None):
     import serial
     from esphome import platformio_api
 
@@ -122,7 +122,7 @@ def run_miniterm(config, port, should_abort = None):
         ser.rts = False
 
     with ser:
-        buffer = bytes()
+        buffer = b""
         while True:
             if should_abort is not None and should_abort():
                 ser.close()
@@ -132,7 +132,7 @@ def run_miniterm(config, port, should_abort = None):
                 if b"\n" not in buffer:
                     continue
                 raw = buffer
-                buffer = bytes()
+                buffer = b""
             except serial.SerialException:
                 _LOGGER.error("Serial port closed!")
                 return
@@ -286,7 +286,7 @@ def upload_program(config, args, host):
     return espota2.run_ota(host, remote_port, password, CORE.firmware_bin)
 
 
-def show_logs(config, args, port, should_abort = None):
+def show_logs(config, args, port, should_abort=None):
     if "logger" not in config:
         raise EsphomeError("Logger is not configured!")
     if get_port_type(port) == "SERIAL":
@@ -438,7 +438,12 @@ def command_monitor(args, config):
             show_mqtt=True,
             show_api=True,
         )
-        show_logs(config, args, port, lambda: modified_time != os.path.getmtime(CORE.config_path))
+        show_logs(
+            config,
+            args,
+            port,
+            lambda: modified_time != os.path.getmtime(CORE.config_path),
+        )
         modified_time = os.path.getmtime(CORE.config_path)
 
 
