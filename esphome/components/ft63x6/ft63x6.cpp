@@ -45,7 +45,7 @@ void FT63X6Touchscreen::setup() {
 
   // Get touch resolution
   this->x_resolution_ = 320;
-  this->y_resolution_ = 240+40 // +40 for bottom row of buttons;
+  this->y_resolution_ = 240+40; // +40 for bottom row of buttons;
 }
 
 void FT63X6Touchscreen::loop() {
