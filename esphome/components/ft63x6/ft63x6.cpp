@@ -45,7 +45,7 @@ void FT63X6Touchscreen::setup() {
 
   // Get touch resolution
   this->x_resolution_ = 320;
-  this->y_resolution_ = 240;
+  this->y_resolution_ = 240+40 // +40 for bottom row of buttons;
 }
 
 void FT63X6Touchscreen::loop() {
@@ -97,7 +97,7 @@ void FT63X6Touchscreen::check_touch_() {
   ESP_LOGV(TAG, "Touch count: %d", touch_count);
 
   uint16_t w = this->display_->get_width_internal();
-  uint16_t h = this->display_->get_height_internal();
+  uint16_t h = this->display_->get_height_internal() + 40;
 
   for (uint8_t i = first_touch_id; i < (touch_count + first_touch_id); i++) {
     uint32_t raw_x = touch_point_.tp[i].x * w / this->x_resolution_;
